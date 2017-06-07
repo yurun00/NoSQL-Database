@@ -1,0 +1,53 @@
+#include <iostream>
+#include <string>
+#include <sstream>
+#include "Common.h"
+#include "SSTable.h"
+#include "Controller.h"
+#include "BloomFilter.h"
+#include <set>
+#include <cstdlib>
+#include <ctime>
+#include <math.h>
+
+
+using namespace std;
+
+int main() {
+	set<int> st;
+	srand(time(NULL));
+	for (int i = 0; i < 1000; i++) {
+		st.insert(rand() % 1000);
+	}
+	float p = 0.1;
+	std::uint64_t n = 1000;
+	std::uint64_t m = -(n * log(p)) / (log(2) * log(2));
+	std::uint8_t k = m / n * log(2);
+	cout << "m: " << m << ", " << "k: " << int(k) << endl;
+	cout << sizeof(*(st.begin())) << endl;
+	BloomFilter bf(m, k);
+	for (auto it = st.begin(); it != st.end(); it++) {
+		bf.add((std::uint8_t*)&(*it), sizeof(*it));
+	}
+	int fcnt = 0, cnt = 0;
+	for (int i = 0; i < 10000; i++) {
+		int num = rand() % 1000;
+		if (st.find(num) == st.end()) {
+			cnt++;
+			if (bf.possiblyContains((std::uint8_t*)&(num), sizeof(num)))
+				fcnt++;
+		}
+	}
+	cout << "false positive: " << float(fcnt) / cnt << endl;
+	fcnt = 0, cnt = 0;
+	for (int i = 0; i < 10000; i++) {
+		int num = rand() % 1000;
+		if (st.find(num) != st.end()) {
+			cnt++;
+			if (!bf.possiblyContains((std::uint8_t*)&(num), sizeof(num)))
+				fcnt++;
+		}
+	}
+	cout << "false negative: " << float(fcnt) / cnt << endl;
+	return 0;
+}

@@ -1,0 +1,55 @@
+#include <iostream>
+#include <string>
+#include <sstream>
+#include "Common.h"
+#include "SSTable.h"
+#include "IOController.h"
+
+using namespace std;
+
+int main() {
+	map<string, unsigned int> index;
+	index["name"] = 0;
+	index["age"] = 1;
+
+	vector<map<unsigned int, string>> data;
+	map<unsigned int, string> mp;
+	mp[0] = "Labron";
+	mp[1] = "Kobe";
+	mp[2] = "Durant";
+	data.push_back(mp);
+	mp = map<unsigned int, string>{};
+	mp[0] = "11";
+	mp[2] = "33";
+	data.push_back(mp);
+	SSTable sst1(string("myTable"), index, data);
+	sst1.print();
+
+	cout << "-----------*********-----------" << endl;
+	index = map<string, unsigned int>{};
+	index["name"] = 2;
+	index["age"] = 0;
+	index["gender"] = 1;
+	data = vector<map<unsigned int, string>>{};
+	mp = map<unsigned int, string>{};
+	mp[0] = "99";
+	mp[1] = "22";
+	data.push_back(mp);
+	mp = map<unsigned int, string>{};
+	mp[0] = "male";
+	mp[1] = "male";
+	mp[2] = "female";
+	data.push_back(mp);
+	mp = map<unsigned int, string>{};
+	mp[0] = "James";
+	data.push_back(mp);
+	SSTable sst2(string("myTable"), index, data);
+	sst2.print();
+
+	cout << "-----------*********-----------" << endl;
+	SSTable sst3;
+	sst3.mergeSSTables(sst1, sst2);
+	sst3.print();
+
+	return 0;
+}
