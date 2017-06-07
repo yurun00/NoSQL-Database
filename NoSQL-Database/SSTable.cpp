@@ -20,6 +20,33 @@ void SSTable::print() {
 	return ;
 }
 
+void SSTable::printAsTable() {
+	std::cout << "table title: " << title << "\n";
+	std::cout << "columns: \t";
+	for (auto mit = index.begin(); mit != index.end(); mit++) {
+		std::cout << mit->first << "\t";
+	}
+	std::cout << std::endl;
+	unsigned int maxRowId = 0;
+	for (auto mit = index.begin(); mit != index.end(); mit++) {
+		unsigned int t = data[mit->second].rbegin()->first;
+		if (t > maxRowId) maxRowId = t;
+	}
+	for (unsigned int i = 0; i <= maxRowId; i++) {
+		std::cout << "id: " << i << "\t\t";
+		for (auto mit = index.begin(); mit != index.end(); mit++) {
+			if (data[mit->second].find(i) != data[mit->second].end()) {
+				std::cout << data[mit->second][i] << "\t";
+			}
+			else {
+				std::cout << "\t";
+			}
+		}
+		std::cout << std::endl;
+	}
+	return ;
+}
+
 bool SSTable::setTitle(const std::string ttl) {
 	title = ttl;
 	return true;

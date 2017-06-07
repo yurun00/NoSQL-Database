@@ -5,6 +5,7 @@
 class SSTable{
 	friend class Controller;
 	friend class MemTable;
+	friend class Query;
 	friend bool writeSSTables(const std::string fileName, const std::vector<SSTable>& ssts);
 	friend bool readSSTables(const std::string fileName, std::vector<SSTable>& ssts);
 	// column family name
@@ -23,6 +24,7 @@ public:
 	SSTable(std::string ttl, colToRows idx,
 		std::vector<rowToVal> dat);
 	void print();
+	void printAsTable();
 	bool setTitle(const std::string ttl);
 	bool setIndex(const colToRows idx);
 	bool setData(const std::vector<rowToVal> dat);

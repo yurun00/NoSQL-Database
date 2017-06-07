@@ -42,8 +42,8 @@ int main() {
 			std::vector<std::string>{ids[i], marks[i]}).into("grade");
 	}
 
-	qr.select({ "name" }).from("student").print();
-	qr.select({ "mark" }).from("grade").print();
+	qr.select({ "name" }).from("student").getResult().print();
+	qr.select({ "mark" }).from("grade").getResult().print();
 
 	cout << "Overall false poisitive error rate of bloom filters: " << float(bfFp) / bfNg << endl;
 	cout << bfNg << endl;

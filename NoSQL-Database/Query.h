@@ -11,17 +11,18 @@ class Query{
 	std::vector<std::string> mColIds;
 	std::vector<std::string> mVals;
 	std::string mCfId;
-	std::string mWhereCond;
+	std::string mWhereColId;
+	std::string mWhereVal;
 	SSTable* mSST1;
 	SSTable* mSST2;
 public:
-	Query() : ctl(), result(), mColIds(), mVals(), mCfId(), mWhereCond()
-		, mSST1(), mSST2() {}
+	Query() : ctl(), result(), mColIds(), mVals(), mCfId(), mWhereColId()
+		, mWhereVal(), mSST1(), mSST2() {}
 	Query(Controller controller) : ctl(controller) {}
 	SSTable& getResult();
 	Query& select(std::vector<std::string> colIds);
-	SSTable& from(std::string cfId);
-	SSTable& where(std::string cond);
+	Query& from(std::string cfId);
+	SSTable& where(std::string colId, std::string val);
 	SSTable& join(const SSTable& sst1, const SSTable& sst2);
 	SSTable& on(std::string cond);
 

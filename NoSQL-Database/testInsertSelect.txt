@@ -51,7 +51,7 @@ int main() {
 	qr.insert(std::vector<std::string>{"name", "id", "age"},
 		std::vector<std::string>{"at", "a20", "13"}).into("student");
 
-	qr.select({ "name" }).from("student").print();
+	qr.select({ "name" }).from("student").getResult().print();
 
 	cout << "Overall false poisitive error rate of bloom filters: " << float(bfFp) / bfNg << endl;
 	cout << bfNg << endl;
