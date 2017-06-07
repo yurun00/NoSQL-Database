@@ -1,6 +1,8 @@
 #include "IO.h"
 
 bool writeSSTables(const std::string fileName, const std::vector<SSTable>& ssts) {
+	remove(fileName.c_str());
+
 	std::ofstream os;
 	os.open(fileName.c_str(), std::ios::out | std::ios::app);
 	for (std::vector<SSTable>::const_iterator it = ssts.begin(); it != ssts.end(); it++) {

@@ -91,7 +91,10 @@
     <Text Include="testBloomFilter.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="testInsertInto.txt">
+    <Text Include="testInsertSelect.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="testInsertSelectWithDiskCompaction.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>

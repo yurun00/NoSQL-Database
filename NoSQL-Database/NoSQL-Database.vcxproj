@@ -141,7 +141,8 @@
   <ItemGroup>
     <Text Include="testBloomFilter.txt" />
     <Text Include="testFileIO.txt" />
-    <Text Include="testInsertInto.txt" />
+    <Text Include="testInsertSelect.txt" />
+    <Text Include="testInsertSelectWithDiskCompaction.txt" />
     <Text Include="testSSTableMerge.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

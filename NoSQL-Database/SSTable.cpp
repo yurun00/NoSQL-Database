@@ -50,6 +50,27 @@ bool SSTable::addEntry(std::string colId, unsigned int rowId, std::string val) {
 	return true;
 }
 
+std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std::vector<SSTable>& ssts2) {
+	std::map<std::string, SSTable> cfToSST;
+	std::vector<SSTable> ssts;
+	for (auto vit1 = ssts1.begin(); vit1 != ssts1.end(); vit1++) {
+		cfToSST[vit1->title] = *vit1;
+	}
+	for (auto vit2 = ssts2.begin(); vit2 != ssts2.end(); vit2++) {
+		if (cfToSST.find(vit2->title) == cfToSST.end()) {
+			cfToSST[vit2->title] = *vit2;
+		}
+		else {
+			SSTable sst = cfToSST[vit2->title];
+			cfToSST[vit2->title].mergeSSTables(sst, *vit2);
+		}
+	}
+	for (auto mit = cfToSST.begin(); mit != cfToSST.end(); mit++) {
+		ssts.push_back(mit->second);
+	}
+	return ssts;
+}
+
 
 SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2) {
 	if (sst1.title != sst2.title) {
@@ -58,7 +79,7 @@ SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2) {
 	}
 	*this = SSTable();
 	title = sst1.title;
-	colToRows::const_iterator mit1 = sst1.index.begin(), mit2 = sst2.index.begin();
+	auto mit1 = sst1.index.begin(), mit2 = sst2.index.begin();
 	unsigned int cnt = 0;
 	while (mit1 != sst1.index.end() || mit2 != sst2.index.end()) {
 		if (mit1 == sst1.index.end() || (mit2 != sst2.index.end() && mit1->first > mit2->first)) {

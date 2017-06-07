@@ -2,15 +2,15 @@
 #include "SSTable.h"
 #include "Controller.h"
 #include "BloomFilter.h"
-#include "Globals.h"
 #include "Query.h"
+
 
 using namespace std;
 
 int main() {
 	Query qr;
 	qr.createTable("student");
-	qr.insert(std::vector<std::string>{"name", "id", "age"}, 
+	qr.insert(std::vector<std::string>{"name", "id", "age"},
 		std::vector<std::string>{"aa", "a01", "13"}).into("student");
 	qr.insert(std::vector<std::string>{"name", "id", "age"},
 		std::vector<std::string>{"ab", "a02", "14"}).into("student");
@@ -51,5 +51,9 @@ int main() {
 	qr.insert(std::vector<std::string>{"name", "id", "age"},
 		std::vector<std::string>{"at", "a20", "13"}).into("student");
 
+	qr.select({ "name" }).from("student").print();
+
+	cout << "Overall false poisitive error rate of bloom filters: " << float(bfFp) / bfNg << endl;
+	cout << bfNg << endl;
 	return 0;
 }

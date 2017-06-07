@@ -29,6 +29,7 @@ public:
 	// sst1 is the later version, sst2 is the previous version, so if there is a conflict, 
 	// we should always take data in sst1.
 	bool addEntry(std::string colId, unsigned int rowId, std::string val);
+	static std::vector<SSTable> mergeSSTableVecs(std::vector<SSTable>& sst1, std::vector<SSTable>& sst2);
 	SSTable& mergeSSTables(const SSTable& sst1, const SSTable& sst2);
 	rowToVal mergeData(const rowToVal& dat1, const rowToVal& dat2);
 	// remove values of '!tombstone'
