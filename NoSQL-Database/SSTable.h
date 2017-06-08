@@ -6,8 +6,12 @@ class SSTable{
 	friend class Controller;
 	friend class MemTable;
 	friend class Query;
-	friend bool writeSSTables(const std::string fileName, const std::vector<SSTable>& ssts);
-	friend bool readSSTables(const std::string fileName, std::vector<SSTable>& ssts);
+	friend bool writeSSTablesU(const std::string fn, const std::vector<SSTable>& ssts);
+	friend bool readSSTablesU(const std::string fn, std::vector<SSTable>& ssts);
+	friend bool writeSSTablesB(const std::string fn, const std::vector<SSTable>& ssts);
+	friend bool readSSTablesB(const std::string fn, std::vector<SSTable>& ssts);
+	friend bool writeSSTablesD(const std::string fn, const std::vector<SSTable>& ssts);
+	friend bool readSSTablesD(const std::string fn, std::vector<SSTable>& ssts);
 	// column family name
 	std::string title;
 	// column id: <row id, value> offset
@@ -15,7 +19,7 @@ class SSTable{
 	// vector element is data in a columns, in the form <row id: value>
 	std::vector<rowToVal> data;
 	// row id, value
-	//std::vector<std::pair<std::string, unsigned int>> compressedData;
+	colToDict dict;
 	// 'b': block compression; 'd': dictionary compression; 'u': uncompressed
 	//char compress;
 public:

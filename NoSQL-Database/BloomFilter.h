@@ -26,6 +26,6 @@ public:
 class BloomFilterManager {
 	friend class Controller;
 	// map from version number to sstable file
-	std::map<unsigned int, BloomFilter> vToBfs;
+	std::map<std::string, BloomFilter> vToBfs;
 };
 

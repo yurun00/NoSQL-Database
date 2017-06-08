@@ -97,5 +97,8 @@
     <Text Include="testInsertSelectWithDiskCompaction.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="testWhere.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

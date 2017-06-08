@@ -1,21 +1,35 @@
 #include "IO.h"
 
-bool writeSSTables(const std::string fileName, const std::vector<SSTable>& ssts) {
-	remove(fileName.c_str());
+bool writeSSTables(const std::string fn, const std::vector<SSTable>& ssts) {
+	if (compressMethod == "u")
+		return writeSSTablesU(fn, ssts);
+	else
+		return true;
+}
+
+bool readSSTables(const std::string fn, std::vector<SSTable>& ssts) {
+	if (compressMethod == "u")
+		return readSSTablesU(fn, ssts);
+	else
+		return true;
+}
+
+bool writeSSTablesU(const std::string fn, const std::vector<SSTable>& ssts) {
+	remove(fn.c_str());
 
 	std::ofstream os;
-	os.open(fileName.c_str(), std::ios::out | std::ios::app);
-	for (std::vector<SSTable>::const_iterator it = ssts.begin(); it != ssts.end(); it++) {
+	os.open(fn.c_str(), std::ios::out | std::ios::app);
+	for (auto it = ssts.begin(); it != ssts.end(); it++) {
 		os << "!" << "\n";
 		os << it->title << "\n";
 		os << "@" << "\n";
-		for (std::map<std::string, unsigned int>::const_iterator mit = it->index.begin(); mit != it->index.end(); mit++) {
+		for (auto mit = it->index.begin(); mit != it->index.end(); mit++) {
 			os << mit->first << "," << std::to_string(mit->second) << "\n";
 		}
 		os << "@" << "\n";
-		for (std::vector<std::map<unsigned int, std::string>>::const_iterator vit = it->data.begin(); vit != it->data.end(); vit++) {
+		for (auto vit = it->data.begin(); vit != it->data.end(); vit++) {
 			os << "#" << "\n";
-			for (std::map<unsigned int, std::string>::const_iterator mit = vit->begin(); mit != vit->end(); mit++) {
+			for (auto mit = vit->begin(); mit != vit->end(); mit++) {
 				os << mit->first << "," << mit->second << "\n";
 			}
 			os << "#" << "\n";
@@ -26,9 +40,13 @@ bool writeSSTables(const std::string fileName, const std::vector<SSTable>& ssts)
 	return true;
 }
 
-bool readSSTables(const std::string fileName, std::vector<SSTable>& ssts) {
+bool writeSSTablesD(const std::string fn, const std::vector<SSTable>& ssts) {
+	return true;
+}
+
+bool readSSTablesU(const std::string fn, std::vector<SSTable>& ssts) {
 	std::ifstream is;
-	is.open(fileName.c_str(), std::ios::in);
+	is.open(fn.c_str(), std::ios::in);
 	std::string line;
 	SSTable sst;
 	while (std::getline(is, line)) {
@@ -66,3 +84,11 @@ bool readSSTables(const std::string fileName, std::vector<SSTable>& ssts) {
 	is.close();
 	return true;
 }
+
+bool readSSTablesD(const std::string fn, std::vector<SSTable>& ssts) {
+	return true;
+}
+
+bool writeSSTablesB(const std::string fn, const std::vector<SSTable>& ssts);
+bool readSSTablesB(const std::string fn, std::vector<SSTable>& ssts);
+

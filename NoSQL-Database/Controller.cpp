@@ -23,7 +23,7 @@ bool Controller::readColRow(const std::string colFamId, const std::string colId,
 			if (vit->second.possiblyContains((const uint8_t*)bfKey.c_str(), bfKey.size())) {
 				std::vector<SSTable> ssts;
 				// read the sstables in the file and try to find the value
-				std::string fn = "data/" + std::to_string(vit->first) + "-memTable.data";
+				std::string fn = "data/" + vit->first + "-memTable.data";
 				readSSTables(fn, ssts);
 				for (auto svit = ssts.begin(); svit != ssts.end(); svit++) {
 					if (svit->title == colFamId && svit->index.find(colId) != svit->index.end()
@@ -47,7 +47,7 @@ bool Controller::readColRow(const std::string colFamId, const std::string colId,
 // when memtable is dumped to the disk as a file, create a bloom filter for that file with current memtable version
 bool Controller::addMemTableBF() {
 	// initialize bloom filter with false positive error rate and number of elements inserted
-	bfm.vToBfs[mt.version] = BloomFilter(BLOOM_FILTER_FALSE_POSITIVE_RATE, mt.curSize);
+	bfm.vToBfs["m" + std::to_string(mt.version)] = BloomFilter(BLOOM_FILTER_FALSE_POSITIVE_RATE, mt.curSize);
 	// add each element to the bloom filter
 	for (auto mit = mt.data.begin(); mit != mt.data.end(); mit++) {
 		for (auto mit1 = mit->second.begin(); mit1 != mit->second.end(); mit1++) {
@@ -55,7 +55,7 @@ bool Controller::addMemTableBF() {
 				std::string colFamId = mit->first, colId = mit1->first, val = mit2->second;
 				unsigned int rowId = mit2->first;
 				std::string bfKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
-				bfm.vToBfs[mt.version].add((const uint8_t*)bfKey.c_str(), bfKey.size());
+				bfm.vToBfs["m" + std::to_string(mt.version)].add((const uint8_t*)bfKey.c_str(), bfKey.size());
 			}
 		}
 	}
@@ -69,14 +69,14 @@ bool Controller::addSSTablesBF(const std::vector<SSTable>& ssts, unsigned int ve
 			size += vit1->size();
 		}
 	}
-	bfm.vToBfs[version] = BloomFilter(BLOOM_FILTER_FALSE_POSITIVE_RATE, size);
+	bfm.vToBfs["m" + std::to_string(version)] = BloomFilter(BLOOM_FILTER_FALSE_POSITIVE_RATE, size);
 	for (auto vit = ssts.begin(); vit != ssts.end(); vit++) {
 		for (auto vit1 = vit->index.begin(); vit1 != vit->index.end(); vit1++) {
 			for (auto mit = vit->data[vit1->second].begin(); mit != vit->data[vit1->second].end(); mit++) {
 				std::string colFamId = vit->title, colId = vit1->first, val = mit->second;
 				unsigned int rowId = mit->first;
 				std::string bfKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
-				bfm.vToBfs[version].add((const uint8_t*)bfKey.c_str(), bfKey.size());
+				bfm.vToBfs["m" + std::to_string(version)].add((const uint8_t*)bfKey.c_str(), bfKey.size());
 			}
 		}
 	}
@@ -99,13 +99,17 @@ bool Controller::addRow(std::string colFamId, std::vector<std::string> colIds, s
 				// compact files on the disk
 				std::vector<SSTable> ssts1, ssts2, ssts3;
 				unsigned int v = mt.maxVersion;
-				std::string fn = "data/" + std::to_string(v) + "-memTable.data";
+				std::string fn = "data/m" + std::to_string(v) + "-memTable.data";
 				readSSTables(fn, ssts1);
-				// delete file after loading into the memory
+				// delete file and bloom filter after loading into the memory
 				remove(fn.c_str());
+				bfm.vToBfs.erase("m" + std::to_string(v));
 
 				while (v > 0) {
-					readSSTables("data/" + std::to_string(--v) + "-memTable.data", ssts2);
+					fn = "data/m" + std::to_string(--v) + "-memTable.data";
+					readSSTables(fn, ssts2);
+					remove(fn.c_str());
+					bfm.vToBfs.erase("m" + std::to_string(v));
 					// compact sstables in ssts1 and ssts2 to generate ssts3
 					// ssts1 is new, ssts2 is old, when there are conflicts, chose values in ssts1
 					ssts3 = SSTable::mergeSSTableVecs(ssts1, ssts2);
@@ -113,13 +117,13 @@ bool Controller::addRow(std::string colFamId, std::vector<std::string> colIds, s
 					ssts1 = ssts3;
 					ssts2 = std::vector<SSTable>{};
 				}
-				writeSSTables("data/" + std::to_string(0) + "-memTable.data", ssts1);
+				fn = "data/s" + std::to_string(dataPartNumber) + "-SSTable.data";
+				writeSSTables(fn, ssts1);
 				
 				// manage bloom filters in the memory
-				bfm.vToBfs = std::map<unsigned int, BloomFilter>{};
-				addSSTablesBF(ssts1, 0);
+				addSSTablesBF(ssts1, dataPartNumber++);
 
-				mt.version = 1;
+				mt.version = 0;
 			}
 		}
 	}
@@ -129,7 +133,7 @@ bool Controller::addRow(std::string colFamId, std::vector<std::string> colIds, s
 
 bool Controller::dumpMt() {
 	// convert the memtable to sstables and dump to disk as a json file
-	std::string fn = "data/" + std::to_string(mt.version) + "-memTable.data";
+	std::string fn = "data/m" + std::to_string(mt.version) + "-memTable.data";
 
 	std::vector<SSTable> ssts = mt.toSSTables();
 
