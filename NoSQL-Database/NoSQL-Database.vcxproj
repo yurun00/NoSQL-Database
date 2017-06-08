@@ -115,6 +115,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BloomFilter.cpp" />
+    <ClCompile Include="Cache.cpp" />
     <ClCompile Include="Controller.cpp" />
     <ClCompile Include="Globals.cpp" />
     <ClCompile Include="IO.cpp" />
@@ -127,6 +128,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BloomFilter.h" />
+    <ClInclude Include="Cache.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="Controller.h" />

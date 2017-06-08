@@ -15,7 +15,11 @@ bool Controller::readColRow(const std::string colFamId, const std::string colId,
 		val = mt.read(colFamId, colId, rowId);
 		sst.addEntry(colId, rowId, val);
 	}
-	// if the location is not in memtable	
+	// if the location is not in memtable, but in the cache 
+	else if (cc.exist(colFamId, colId, rowId)){
+		val = cc.readEntry(colFamId, colId, rowId);
+		sst.addEntry(colId, rowId, val);
+	}
 	else {
 		std::string bfKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
 		for (auto vit = bfm.vToBfs.begin(); vit != bfm.vToBfs.end(); vit++) {
@@ -26,11 +30,18 @@ bool Controller::readColRow(const std::string colFamId, const std::string colId,
 				std::string fn = "data/" + vit->first + "-memTable.data";
 				readSSTables(fn, ssts);
 				for (auto svit = ssts.begin(); svit != ssts.end(); svit++) {
+					// if the value exist in this sstable
 					if (svit->title == colFamId && svit->index.find(colId) != svit->index.end()
 						&& svit->data.size() > svit->index[colId]
 						&& svit->data[svit->index[colId]].find(rowId) != svit->data[svit->index[colId]].end()) {
 						val = svit->data[svit->index[colId]][rowId];
 						sst.addEntry(colId, rowId, val);
+						// add the page where the value is in to the cache
+						unsigned int start = (rowId / PAGE_SIZE) * PAGE_SIZE;
+						unsigned int end = std::min((rowId / PAGE_SIZE + 1) * PAGE_SIZE - 1, svit->data[svit->index[colId]].size() - 1);
+						for (unsigned int i = start; i <= end; i++) {
+							cc.updateEntry(colFamId, colId, rowId, svit->data[svit->index[colId]][i]);
+						}
 						return true;
 					}
 				}
@@ -89,6 +100,7 @@ bool Controller::addRow(std::string colFamId, std::vector<std::string> colIds, s
 	assert(colIds.size() == vals.size());
 	for (unsigned int i = 0; i < colIds.size(); i++) {
 		mt.update(colFamId, colIds[i], rn, vals[i]);
+		cc.updateEntry(colFamId, colIds[i], rn, vals[i]);
 		// if current size greater than or equal to the maximum size, dump the memtable to the disk
 		if (mt.curSize >= mt.maxSize) {
 			// create bloom filter for the memtable file

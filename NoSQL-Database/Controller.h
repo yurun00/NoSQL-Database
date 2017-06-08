@@ -4,12 +4,14 @@
 #include "MetaSSTable.h"
 #include "MemTable.h"
 #include "BloomFilter.h"
+#include "Cache.h"
 
 class Controller{
 	friend class Query;
 	MetaSSTableManager msm;
 	MemTable mt;
 	BloomFilterManager bfm;
+	Cache cc;
 public:
 	Controller() : msm(), mt(), bfm() {}
 	bool readCol(const std::string colFamId, const std::string colId, SSTable& sst);
