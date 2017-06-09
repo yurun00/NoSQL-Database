@@ -95,12 +95,6 @@ bool Controller::readColRowFrom(const std::string colFamId, const std::string co
 	return false;
 }
 
-
-bool Controller::deleteEntry(std::string cfId, std::string colId, unsigned int rowId) {
-	mt.deleteEntry(cfId, colId, rowId);
-	return true;
-}
-
 // when memtable is dumped to the disk as a file, create a bloom filter for that file with current memtable version
 bool Controller::addMemTableBF() {
 	// initialize bloom filter with false positive error rate and number of elements inserted
@@ -140,66 +134,85 @@ bool Controller::addSSTablesBF(const std::vector<SSTable>& ssts, unsigned int ve
 	return true;
 }
 
+bool Controller::deleteEntry(std::string cfId, std::string colId, unsigned int rowId) {
+	mt.deleteEntry(cfId, colId, rowId);
+	// if current size greater than or equal to the maximum size, dump the memtable to the disk
+	if (mt.curSize >= mt.maxSize) {
+		flushAndCompaction();
+	}
+	return true;
+}
 
 bool Controller::addRow(std::string colFamId, std::vector<std::string> colIds, std::vector<std::string> vals) {
-	unsigned int rn = msm.getRowNum(colFamId), mtVersion = mt.version;
+	unsigned int rn = msm.getRowNum(colFamId);
 	assert(colIds.size() == vals.size());
 	for (unsigned int i = 0; i < colIds.size(); i++) {
 		mt.update(colFamId, colIds[i], rn, vals[i]);
 		// if current size greater than or equal to the maximum size, dump the memtable to the disk
 		if (mt.curSize >= mt.maxSize) {
-			// create bloom filter for the memtable file
-			addMemTableBF();
-			dumpMt();
-			// if current version greater than or equal to the maximum version, compact the memtable files on disk
-			if (mtVersion >= mt.maxVersion) {
-				// compact files on the disk
-				std::vector<SSTable> ssts1, ssts2, ssts3;
-				unsigned int v = mt.maxVersion;
-				std::string fn = "data/m" + std::to_string(v) + "-memTable.data";
-				readSSTables(fn, ssts1);
-				// delete file and bloom filter after loading into the memory
-				remove(fn.c_str());
-				bfm.vToBfs.erase("m" + std::to_string(v));
-
-				while (v > 0) {
-					fn = "data/m" + std::to_string(--v) + "-memTable.data";
-					readSSTables(fn, ssts2);
-					remove(fn.c_str());
-					bfm.vToBfs.erase("m" + std::to_string(v));
-					// compact sstables in ssts1 and ssts2 to generate ssts3
-					// ssts1 is new, ssts2 is old, when there are conflicts, chose values in ssts1
-					ssts3 = SSTable::mergeSSTableVecs(ssts1, ssts2);
-
-					ssts1 = ssts3;
-					ssts2 = std::vector<SSTable>{};
-				}
-				fn = "data/s" + std::to_string(dataPartNumber) + "-SSTable.data";
-				writeSSTables(fn, ssts1);
-
-				// update caches
-				ccm.vToCcs["s" + std::to_string(dataPartNumber)] = Cache{};
-				auto mit = ccm.vToCcs.begin();
-				while (mit != ccm.vToCcs.end()) {
-					if (mit->first.at(0) == 'm') {
-						ccm.vToCcs.erase(mit++);
-					}
-					else
-						mit++;
-				}
-				
-				// manage bloom filters in the memory
-				addSSTablesBF(ssts1, dataPartNumber++);
-
-				mt.version = 0;
-			}
+			flushAndCompaction();
 		}
 	}
 	msm.addRow(colFamId);
 	return true;
 }
 
-bool Controller::dumpMt() {
+bool Controller::flushAndCompaction() {
+	unsigned int mtVersion = mt.version;
+	// create bloom filter for the memtable file
+	addMemTableBF();
+	flushMt();
+	// if current version greater than or equal to the maximum version, compact the memtable files on disk
+	if (mtVersion >= mt.maxVersion) {
+		// compact files on the disk
+		compactionMt();
+	}
+	return true;
+}
+
+bool Controller::compactionMt() {
+	std::vector<SSTable> ssts1, ssts2, ssts3;
+	unsigned int v = mt.maxVersion;
+	std::string fn = "data/m" + std::to_string(v) + "-memTable.data";
+	readSSTables(fn, ssts1);
+	// delete file and bloom filter after loading into the memory
+	remove(fn.c_str());
+	bfm.vToBfs.erase("m" + std::to_string(v));
+
+	while (v > 0) {
+		fn = "data/m" + std::to_string(--v) + "-memTable.data";
+		readSSTables(fn, ssts2);
+		remove(fn.c_str());
+		bfm.vToBfs.erase("m" + std::to_string(v));
+		// compact sstables in ssts1 and ssts2 to generate ssts3
+		// ssts1 is new, ssts2 is old, when there are conflicts, chose values in ssts1
+		ssts3 = SSTable::mergeSSTableVecs(ssts1, ssts2, true);
+
+		ssts1 = ssts3;
+		ssts2 = std::vector<SSTable>{};
+	}
+	fn = "data/s" + std::to_string(dataPartNumber) + "-SSTable.data";
+	writeSSTables(fn, ssts1);
+
+	// update caches
+	ccm.vToCcs["s" + std::to_string(dataPartNumber)] = Cache{};
+	auto mit = ccm.vToCcs.begin();
+	while (mit != ccm.vToCcs.end()) {
+		if (mit->first.at(0) == 'm') {
+			ccm.vToCcs.erase(mit++);
+		}
+		else
+			mit++;
+	}
+
+	// manage bloom filters in the memory
+	addSSTablesBF(ssts1, dataPartNumber++);
+
+	mt.version = 0;
+	return true;
+}
+
+bool Controller::flushMt() {
 	// convert the memtable to sstables and dump to disk as a json file
 	std::string fn = "data/m" + std::to_string(mt.version) + "-memTable.data";
 

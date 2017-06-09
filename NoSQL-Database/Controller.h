@@ -21,5 +21,7 @@ public:
 	bool deleteEntry(std::string cfId, std::string colId, unsigned int rowId);
 	bool addSSTablesBF(const std::vector<SSTable>& ssts, unsigned int version);
 	bool addMemTableBF();
-	bool dumpMt();
+	bool flushAndCompaction();
+	bool compactionMt();
+	bool flushMt();
 };

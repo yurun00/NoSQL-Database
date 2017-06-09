@@ -77,7 +77,7 @@ bool SSTable::addEntry(std::string colId, unsigned int rowId, std::string val) {
 	return true;
 }
 
-std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std::vector<SSTable>& ssts2) {
+std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std::vector<SSTable>& ssts2, bool keepTombStone) {
 	std::map<std::string, SSTable> cfToSST;
 	std::vector<SSTable> ssts;
 	for (auto vit1 = ssts1.begin(); vit1 != ssts1.end(); vit1++) {
@@ -89,7 +89,7 @@ std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std:
 		}
 		else {
 			SSTable sst = cfToSST[vit2->title];
-			cfToSST[vit2->title].mergeSSTables(sst, *vit2);
+			cfToSST[vit2->title].mergeSSTables(sst, *vit2, keepTombStone);
 		}
 	}
 	for (auto mit = cfToSST.begin(); mit != cfToSST.end(); mit++) {
@@ -99,7 +99,7 @@ std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std:
 }
 
 // remove tombstone entries
-SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2) {
+SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2, bool keepTombStone) {
 	if (sst1.title != sst2.title) {
 		std::cout << "Different tables cannot be merged." << std::endl;
 		return *this;
@@ -130,13 +130,15 @@ SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2) {
 			mit2++;
 		}
 		// remove tombstone entries
-		auto mit = data.back().begin();
-		while (mit != data.back().end())
-		{
-			if (mit->second == TOMBSTONE)
-				data.back().erase(mit++);
-			else
-				mit++;
+		if (!keepTombStone) {
+			auto mit = data.back().begin();
+			while (mit != data.back().end())
+			{
+				if (mit->second == TOMBSTONE)
+					data.back().erase(mit++);
+				else
+					mit++;
+			}
 		}
 	}
 	return *this;
