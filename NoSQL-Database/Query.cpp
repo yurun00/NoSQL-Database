@@ -76,6 +76,11 @@ Query& Query::deleteEntry(std::string cfId, std::string colId, unsigned int rowI
 	ctl.deleteEntry(cfId, colId, rowId);
 	return *this;
 }
+
+Query& Query::updateEntry(std::string cfId, std::string colId, unsigned int rowId, std::string val) {
+	ctl.updateEntry(cfId, colId, rowId, val);
+	return *this;
+}
 //
 //SSTable& Query::join(const SSTable& sst1, const SSTable& sst2) {
 //

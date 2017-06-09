@@ -21,6 +21,7 @@ bool writeSSTablesU(const std::string fn, const std::vector<SSTable>& ssts) {
 
 	std::ofstream os;
 	os.open(fn.c_str(), std::ios::out | std::ios::app);
+	int dataLine = 0;
 	for (auto it = ssts.begin(); it != ssts.end(); it++) {
 		os << "!" << "\n";
 		os << it->title << "\n";
@@ -33,12 +34,14 @@ bool writeSSTablesU(const std::string fn, const std::vector<SSTable>& ssts) {
 			os << "#" << "\n";
 			for (auto mit = vit->begin(); mit != vit->end(); mit++) {
 				os << mit->first << "," << mit->second << "\n";
+				dataLine++;
 			}
 			os << "#" << "\n";
 		}
 		os << "$" << "\n";
 	}
 	os.close();
+	std::cout << dataLine << std::endl;
 	return true;
 }
 

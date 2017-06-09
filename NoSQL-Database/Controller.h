@@ -19,6 +19,7 @@ public:
 	bool readColRowFrom(const std::string colFamId, const std::string colId, const unsigned int rowId, std::string fn, SSTable& sst);
 	bool addRow(std::string colFamId, std::vector<std::string> colIds, std::vector<std::string> vals);
 	bool deleteEntry(std::string cfId, std::string colId, unsigned int rowId);
+	bool updateEntry(std::string cfId, std::string colId, unsigned int rowId, std::string val);
 	bool addSSTablesBF(const std::vector<SSTable>& ssts, unsigned int version);
 	bool addMemTableBF();
 	bool flushAndCompaction();

@@ -143,6 +143,15 @@ bool Controller::deleteEntry(std::string cfId, std::string colId, unsigned int r
 	return true;
 }
 
+bool Controller::updateEntry(std::string cfId, std::string colId, unsigned int rowId, std::string val) {
+	mt.update(cfId, colId, rowId, val);
+	// if current size greater than or equal to the maximum size, dump the memtable to the disk
+	if (mt.curSize >= mt.maxSize) {
+		flushAndCompaction();
+	}
+	return true;
+}
+
 bool Controller::addRow(std::string colFamId, std::vector<std::string> colIds, std::vector<std::string> vals) {
 	unsigned int rn = msm.getRowNum(colFamId);
 	assert(colIds.size() == vals.size());
@@ -249,7 +258,7 @@ bool Controller::compactMemOrSST(std::string mOrS) {
 				}
 			}
 		}
-		if (remInFile = MAX_SSTABLE_SIZE) {
+		if (remInFile != MAX_SSTABLE_SIZE) {
 			fn = "data/s" + std::to_string(curDataPart) + "-SSTable.data";
 			writeSSTables(fn, ssts);
 			// manage bloom filters in the memory

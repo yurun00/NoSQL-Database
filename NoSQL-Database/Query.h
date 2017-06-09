@@ -30,6 +30,7 @@ public:
 	SSTable& into(std::string cfId);
 
 	Query& deleteEntry(std::string cfId, std::string colId, unsigned int rowId);
+	Query& updateEntry(std::string cfId, std::string colId, unsigned int rowId, std::string val);
 
 	Query& createTable(std::string cfId);
 };
