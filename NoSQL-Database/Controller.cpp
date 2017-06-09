@@ -122,9 +122,9 @@ bool Controller::addSSTablesBF(const std::vector<SSTable>& ssts, unsigned int ve
 	}
 	bfm.vToBfs["s" + std::to_string(version)] = BloomFilter(BLOOM_FILTER_FALSE_POSITIVE_RATE, size);
 	for (auto vit = ssts.begin(); vit != ssts.end(); vit++) {
-		for (auto vit1 = vit->index.begin(); vit1 != vit->index.end(); vit1++) {
-			for (auto mit = vit->data[vit1->second].begin(); mit != vit->data[vit1->second].end(); mit++) {
-				std::string colFamId = vit->title, colId = vit1->first, val = mit->second;
+		for (auto mit1 = vit->index.begin(); mit1 != vit->index.end(); mit1++) {
+			for (auto mit = vit->data[mit1->second].begin(); mit != vit->data[mit1->second].end(); mit++) {
+				std::string colFamId = vit->title, colId = mit1->first, val = mit->second;
 				unsigned int rowId = mit->first;
 				std::string bfKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
 				bfm.vToBfs["s" + std::to_string(version)].add((const uint8_t*)bfKey.c_str(), bfKey.size());
@@ -164,51 +164,100 @@ bool Controller::flushAndCompaction() {
 	flushMt();
 	// if current version greater than or equal to the maximum version, compact the memtable files on disk
 	if (mtVersion >= mt.maxVersion) {
-		// compact files on the disk
-		compactionMt();
+		// compact memtable files on the disk, and update sstable files
+		compaction();
 	}
 	return true;
 }
 
-bool Controller::compactionMt() {
+bool Controller::compaction() {
+	compactMemOrSST("m");
+	compactMemOrSST("s");
+	// update caches
+	ccm.vToCcs = std::map<std::string, Cache>{};
+	for (unsigned int i = 0; i < dataPartNumber; i++) {
+		ccm.vToCcs["s" + std::to_string(i)] = Cache{};
+	}
+
+	return true;
+}
+
+bool Controller::compactMemOrSST(std::string mOrS) {
 	std::vector<SSTable> ssts1, ssts2, ssts3;
-	unsigned int v = mt.maxVersion;
-	std::string fn = "data/m" + std::to_string(v) + "-memTable.data";
+	int v = (mOrS == "m" ? MAX_MEMTABLE_VERSION : dataPartNumber - 1);
+	assert(v >= 0);
+	std::string fn = "data/" + mOrS + std::to_string(v) + (mOrS == "m" ? "-memTable.data" : "-SSTable.data");
+
+	// delete memtable files and bloom filters after loading into the memory
 	readSSTables(fn, ssts1);
-	// delete file and bloom filter after loading into the memory
 	remove(fn.c_str());
-	bfm.vToBfs.erase("m" + std::to_string(v));
+	bfm.vToBfs.erase(mOrS + std::to_string(v));
 
 	while (v > 0) {
-		fn = "data/m" + std::to_string(--v) + "-memTable.data";
+		fn = "data/" + mOrS + std::to_string(--v) + (mOrS == "m" ? "-memTable.data" : "-SSTable.data");
 		readSSTables(fn, ssts2);
 		remove(fn.c_str());
-		bfm.vToBfs.erase("m" + std::to_string(v));
+		bfm.vToBfs.erase(mOrS + std::to_string(v));
 		// compact sstables in ssts1 and ssts2 to generate ssts3
 		// ssts1 is new, ssts2 is old, when there are conflicts, chose values in ssts1
-		ssts3 = SSTable::mergeSSTableVecs(ssts1, ssts2, true);
-
+		ssts3 = SSTable::mergeSSTableVecs(ssts1, ssts2);
 		ssts1 = ssts3;
 		ssts2 = std::vector<SSTable>{};
 	}
-	fn = "data/s" + std::to_string(dataPartNumber) + "-SSTable.data";
-	writeSSTables(fn, ssts1);
-
-	// update caches
-	ccm.vToCcs["s" + std::to_string(dataPartNumber)] = Cache{};
-	auto mit = ccm.vToCcs.begin();
-	while (mit != ccm.vToCcs.end()) {
-		if (mit->first.at(0) == 'm') {
-			ccm.vToCcs.erase(mit++);
-		}
-		else
-			mit++;
+	if (mOrS == "m") {
+		fn = "data/s" + std::to_string(dataPartNumber) + "-SSTable.data";
+		writeSSTables(fn, ssts1);
+		// manage bloom filters in the memory
+		addSSTablesBF(ssts1, dataPartNumber);
+		dataPartNumber++;
+		mt.version = 0;
 	}
-
-	// manage bloom filters in the memory
-	addSSTablesBF(ssts1, dataPartNumber++);
-
-	mt.version = 0;
+	else {
+		assert(mOrS == "s");
+		unsigned int curDataPart = 0;
+		int remInFile = MAX_SSTABLE_SIZE;
+		std::vector<SSTable> ssts;
+		for (auto vit = ssts1.begin(); vit != ssts1.end(); vit++) {
+			vit->removeTombstone();
+		}
+		for (auto vit = ssts1.begin(); vit != ssts1.end(); vit++) {
+			for (auto mit = vit->index.begin(); mit != vit->index.end(); mit++) {
+				for (auto mit1 = vit->data[mit->second].begin(); mit1 != vit->data[mit->second].end(); mit1++) {
+					if (remInFile == 0) {
+						remInFile = MAX_SSTABLE_SIZE;
+						fn = "data/s" + std::to_string(curDataPart) + "-SSTable.data";
+						writeSSTables(fn, ssts);
+						// manage bloom filters in the memory
+						addSSTablesBF(ssts, curDataPart);
+						curDataPart++;
+						ssts = std::vector<SSTable>{};
+					}
+					remInFile--;
+					std::string colFamId = vit->title, colId = mit->first, val = mit1->second;
+					unsigned int rowId = mit1->first;
+					if (ssts.size() == 0 || ssts.back().title != colFamId)
+						ssts.push_back(SSTable{ colFamId });
+					if (ssts.back().index.find(colId) == ssts.back().index.end()) {
+						ssts.back().index[colId] = ssts.back().data.size();
+						ssts.back().data.push_back(rowToVal{});
+						ssts.back().data.back()[rowId] = val;
+					}
+					else {
+						assert(ssts.back().index[colId] == ssts.back().data.size() - 1);
+						ssts.back().data.back()[rowId] = val;
+					}
+				}
+			}
+		}
+		if (remInFile = MAX_SSTABLE_SIZE) {
+			fn = "data/s" + std::to_string(curDataPart) + "-SSTable.data";
+			writeSSTables(fn, ssts);
+			// manage bloom filters in the memory
+			addSSTablesBF(ssts, curDataPart);
+			curDataPart++;
+		}
+		dataPartNumber = curDataPart;
+	}
 	return true;
 }
 

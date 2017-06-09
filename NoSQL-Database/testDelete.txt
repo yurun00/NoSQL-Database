@@ -44,6 +44,14 @@ int main() {
 	qr.deleteEntry("student", "age", 7);
 	qr.deleteEntry("student", "age", 9);
 	qr.deleteEntry("student", "age", 11);
+	qr.deleteEntry("student", "age", 12);
+	qr.deleteEntry("student", "age", 13);
+	qr.deleteEntry("student", "age", 14);
+	qr.deleteEntry("student", "age", 15);
+	qr.deleteEntry("student", "age", 16);
+	qr.deleteEntry("student", "age", 17);
+	qr.deleteEntry("student", "age", 18);
+	qr.deleteEntry("student", "age", 19);
 	qr.select({ "name", "age" }).from("student").getResult().printAsTable();
 
 	cout << "Overall false poisitive error rate of bloom filters: " << float(bfFp) / bfNg << endl;

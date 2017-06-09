@@ -22,6 +22,7 @@ public:
 	bool addSSTablesBF(const std::vector<SSTable>& ssts, unsigned int version);
 	bool addMemTableBF();
 	bool flushAndCompaction();
-	bool compactionMt();
+	bool compaction();
+	bool compactMemOrSST(std::string mOrS);
 	bool flushMt();
 };

@@ -1,6 +1,8 @@
 #include "IO.h"
 
 bool writeSSTables(const std::string fn, const std::vector<SSTable>& ssts) {
+	if (ssts.size() == 0)
+		return false;
 	if (compressMethod == "u")
 		return writeSSTablesU(fn, ssts);
 	else

@@ -77,7 +77,7 @@ bool SSTable::addEntry(std::string colId, unsigned int rowId, std::string val) {
 	return true;
 }
 
-std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std::vector<SSTable>& ssts2, bool keepTombStone) {
+std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std::vector<SSTable>& ssts2) {
 	std::map<std::string, SSTable> cfToSST;
 	std::vector<SSTable> ssts;
 	for (auto vit1 = ssts1.begin(); vit1 != ssts1.end(); vit1++) {
@@ -89,7 +89,7 @@ std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std:
 		}
 		else {
 			SSTable sst = cfToSST[vit2->title];
-			cfToSST[vit2->title].mergeSSTables(sst, *vit2, keepTombStone);
+			cfToSST[vit2->title].mergeSSTables(sst, *vit2);
 		}
 	}
 	for (auto mit = cfToSST.begin(); mit != cfToSST.end(); mit++) {
@@ -99,7 +99,7 @@ std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std:
 }
 
 // remove tombstone entries
-SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2, bool keepTombStone) {
+SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2) {
 	if (sst1.title != sst2.title) {
 		std::cout << "Different tables cannot be merged." << std::endl;
 		return *this;
@@ -130,7 +130,7 @@ SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2, bool k
 			mit2++;
 		}
 		// remove tombstone entries
-		if (!keepTombStone) {
+		/*if (!keepTombStone) {
 			auto mit = data.back().begin();
 			while (mit != data.back().end())
 			{
@@ -139,7 +139,7 @@ SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2, bool k
 				else
 					mit++;
 			}
-		}
+		}*/
 	}
 	return *this;
 }
@@ -154,4 +154,17 @@ rowToVal SSTable::mergeData(const rowToVal& dat1, const rowToVal& dat2) {
 			dat[vit2->first] = vit2->second;
 	}
 	return dat;
+}
+
+bool SSTable::removeTombstone() {
+	for (auto mit = index.begin(); mit != index.end(); mit++) {
+		auto mit1 = data[mit->second].begin();
+		while (mit1 != data[mit->second].end()) {
+			if (mit1->second == TOMBSTONE)
+				data[mit->second].erase(mit1++);
+			else
+				mit1++;
+		}
+	}
+	return true;
 }
