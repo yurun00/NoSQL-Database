@@ -17,7 +17,7 @@ public:
 	std::vector<SSTable> toSSTables();
 	// update or add
 	bool update(std::string colFamId, std::string colId, unsigned int rowId, std::string val);
-	bool remove(std::string colFamId, std::string colId, unsigned int rowId);
+	bool deleteEntry(std::string colFamId, std::string colId, unsigned int rowId);
 	std::string read(std::string colFamId, std::string colId, unsigned int rowId);
 	bool exist(std::string colFamId, std::string colId, unsigned int rowId);
 };

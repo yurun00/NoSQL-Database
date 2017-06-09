@@ -106,5 +106,8 @@
     <Text Include="testWhere.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="testDelete.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

@@ -1,6 +1,7 @@
 #pragma once
 #include "Common.h"
 #include "Types.h"
+#include "Globals.h"
 
 class SSTable{
 	friend class Controller;

@@ -22,8 +22,7 @@ std::vector<SSTable> MemTable::toSSTables() {
 
 bool MemTable::update(std::string colFamId, std::string colId, unsigned int rowId, std::string val) {
 	// update location is not in memtable, add an entry and increase the size
-	if(data.find(colFamId) == data.end() || data[colFamId].find(colId) == data[colFamId].end() 
-		|| data[colFamId][colId].find(rowId) == data[colFamId][colId].end())
+	if(!exist(colFamId, colId, rowId))
 		curSize++;
 	else ;
 	data[colFamId][colId][rowId] = val;
@@ -31,19 +30,20 @@ bool MemTable::update(std::string colFamId, std::string colId, unsigned int rowI
 	return true;
 }
 
-bool MemTable::remove(std::string colFamId, std::string colId, unsigned int rowId) {
+bool MemTable::deleteEntry(std::string colFamId, std::string colId, unsigned int rowId) {
 	// update location is not in memtable, add an entry and increase the size
 	if (!exist(colFamId, colId, rowId))
 		curSize++;
-	else;
-	data[colFamId][colId][rowId] = "!tombstone";
+	else ;
+	data[colFamId][colId][rowId] = TOMBSTONE;
 
 	return true;
 }
 
 std::string MemTable::read(std::string colFamId, std::string colId, unsigned int rowId) {
-	if (exist(colFamId, colId, rowId))
+	if (exist(colFamId, colId, rowId)) {
 		return data[colFamId][colId][rowId];
+	}
 	else
 		return "";
 }

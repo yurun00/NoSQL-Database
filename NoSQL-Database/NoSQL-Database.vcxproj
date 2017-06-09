@@ -142,6 +142,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="testBloomFilter.txt" />
+    <Text Include="testDelete.txt" />
     <Text Include="testFileIO.txt" />
     <Text Include="testInsertSelect.txt" />
     <Text Include="testInsertSelectWithDiskCompaction.txt" />

@@ -71,6 +71,11 @@ Query& Query::createTable(std::string cfId) {
 	return *this;
 }
 
+
+Query& Query::deleteEntry(std::string cfId, std::string colId, unsigned int rowId) {
+	ctl.deleteEntry(cfId, colId, rowId);
+	return *this;
+}
 //
 //SSTable& Query::join(const SSTable& sst1, const SSTable& sst2) {
 //

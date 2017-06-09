@@ -13,45 +13,91 @@ bool Controller::readColRow(const std::string colFamId, const std::string colId,
 	// if the location is in memtable
 	if (mt.exist(colFamId, colId, rowId)) {
 		val = mt.read(colFamId, colId, rowId);
+		if (val == TOMBSTONE)
+			return false;
 		sst.addEntry(colId, rowId, val);
-	}
-	// if the location is not in memtable, but in the cache 
-	else if (cc.exist(colFamId, colId, rowId)){
-		val = cc.readEntry(colFamId, colId, rowId);
-		sst.addEntry(colId, rowId, val);
+		return true;
 	}
 	else {
 		std::string bfKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
-		for (auto vit = bfm.vToBfs.begin(); vit != bfm.vToBfs.end(); vit++) {
-			// if the bloom filter indicates that the key is in the file
-			if (vit->second.possiblyContains((const uint8_t*)bfKey.c_str(), bfKey.size())) {
-				std::vector<SSTable> ssts;
-				// read the sstables in the file and try to find the value
-				std::string fn = "data/" + vit->first + "-memTable.data";
-				readSSTables(fn, ssts);
-				for (auto svit = ssts.begin(); svit != ssts.end(); svit++) {
-					// if the value exist in this sstable
-					if (svit->title == colFamId && svit->index.find(colId) != svit->index.end()
-						&& svit->data.size() > svit->index[colId]
-						&& svit->data[svit->index[colId]].find(rowId) != svit->data[svit->index[colId]].end()) {
-						val = svit->data[svit->index[colId]][rowId];
-						sst.addEntry(colId, rowId, val);
-						// add the page where the value is in to the cache
-						unsigned int start = (rowId / PAGE_SIZE) * PAGE_SIZE;
-						unsigned int end = std::min((rowId / PAGE_SIZE + 1) * PAGE_SIZE - 1, svit->data[svit->index[colId]].size() - 1);
-						for (unsigned int i = start; i <= end; i++) {
-							cc.updateEntry(colFamId, colId, rowId, svit->data[svit->index[colId]][i]);
-						}
-						return true;
-					}
+		for (int mn = mt.version - 1; mn >= 0; mn--) {
+			// if the bloom filter indicates that the key is in the memtable file
+			std::string mKey = "m" + std::to_string(mn);
+			if (bfm.vToBfs[mKey]
+				.possiblyContains((const uint8_t*)bfKey.c_str(), bfKey.size())) {
+				// if the value is in cache of the file
+				if (ccm.exist(colFamId, colId, rowId, mKey)) {
+					val = ccm.readEntry(colFamId, colId, rowId, mKey);
+					if (val == TOMBSTONE)
+						return false;
+					sst.addEntry(colId, rowId, val);
+					return true;
 				}
-				// the value is not in these sstables, continue to next file, check the bloom filter first
-				// bloom filter false positive number
-				bfFp++;
+				// else read from the file
+				std::string fn = "data/" + mKey + "-memTable.data";
+				if (readColRowFrom(colFamId, colId, rowId, fn, sst))
+					return true;
+			}
+			bfNg++;
+		}
+		for (int sn = dataPartNumber - 1; sn >= 0; sn--) {
+			// if the bloom filter indicates that the key is in the sstable file
+			std::string mKey = "s" + std::to_string(sn);
+			if (bfm.vToBfs[mKey]
+				.possiblyContains((const uint8_t*)bfKey.c_str(), bfKey.size())) {
+				// if the value is in cache of the file
+				if (ccm.exist(colFamId, colId, rowId, mKey)) {
+					val = ccm.readEntry(colFamId, colId, rowId, mKey);
+					if (val == TOMBSTONE)
+						return false;
+					sst.addEntry(colId, rowId, val);
+					return true;
+				}
+				std::string fn = "data/" + mKey + "-SSTable.data";
+				if (readColRowFrom(colFamId, colId, rowId, fn, sst))
+					return true;
 			}
 			bfNg++;
 		}
 	}
+	return false;
+}
+
+// read entry from the file return true if find, false if not
+bool Controller::readColRowFrom(const std::string colFamId, const std::string colId, const unsigned int rowId, std::string fn, SSTable& sst) {
+	std::string val;
+	std::vector<SSTable> ssts;
+	// read the sstables in the file and try to find the value
+	readSSTables(fn, ssts);
+	for (auto svit = ssts.begin(); svit != ssts.end(); svit++) {
+		// if the value exist in this sstable
+		if (svit->title == colFamId && svit->index.find(colId) != svit->index.end()
+			&& svit->data.size() > svit->index[colId]
+			&& svit->data[svit->index[colId]].find(rowId) != svit->data[svit->index[colId]].end()) {
+			val = svit->data[svit->index[colId]][rowId];
+			// return true and do not add to sstable, so the caller will return
+			if (val == TOMBSTONE)
+				return true;
+			sst.addEntry(colId, rowId, val);
+			// add the page where the value is in to the cache of the file
+			std::string mKey = fn.substr(fn.find("/")+1, fn.find("-")-fn.find("/")-1);
+			unsigned int start = (rowId / PAGE_SIZE) * PAGE_SIZE;
+			unsigned int end = std::min((rowId / PAGE_SIZE + 1) * PAGE_SIZE - 1, svit->data[svit->index[colId]].size() - 1);
+			for (unsigned int i = start; i <= end; i++) {
+				ccm.vToCcs[mKey].updateEntry(colFamId, colId, i, svit->data[svit->index[colId]][i]);
+			}
+			return true;
+		}
+	}
+	// the value is not in these sstables, continue to next file, check the bloom filter first
+	// bloom filter false positive number
+	bfFp++;
+	return false;
+}
+
+
+bool Controller::deleteEntry(std::string cfId, std::string colId, unsigned int rowId) {
+	mt.deleteEntry(cfId, colId, rowId);
 	return true;
 }
 
@@ -80,14 +126,14 @@ bool Controller::addSSTablesBF(const std::vector<SSTable>& ssts, unsigned int ve
 			size += vit1->size();
 		}
 	}
-	bfm.vToBfs["m" + std::to_string(version)] = BloomFilter(BLOOM_FILTER_FALSE_POSITIVE_RATE, size);
+	bfm.vToBfs["s" + std::to_string(version)] = BloomFilter(BLOOM_FILTER_FALSE_POSITIVE_RATE, size);
 	for (auto vit = ssts.begin(); vit != ssts.end(); vit++) {
 		for (auto vit1 = vit->index.begin(); vit1 != vit->index.end(); vit1++) {
 			for (auto mit = vit->data[vit1->second].begin(); mit != vit->data[vit1->second].end(); mit++) {
 				std::string colFamId = vit->title, colId = vit1->first, val = mit->second;
 				unsigned int rowId = mit->first;
 				std::string bfKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
-				bfm.vToBfs["m" + std::to_string(version)].add((const uint8_t*)bfKey.c_str(), bfKey.size());
+				bfm.vToBfs["s" + std::to_string(version)].add((const uint8_t*)bfKey.c_str(), bfKey.size());
 			}
 		}
 	}
@@ -100,7 +146,6 @@ bool Controller::addRow(std::string colFamId, std::vector<std::string> colIds, s
 	assert(colIds.size() == vals.size());
 	for (unsigned int i = 0; i < colIds.size(); i++) {
 		mt.update(colFamId, colIds[i], rn, vals[i]);
-		cc.updateEntry(colFamId, colIds[i], rn, vals[i]);
 		// if current size greater than or equal to the maximum size, dump the memtable to the disk
 		if (mt.curSize >= mt.maxSize) {
 			// create bloom filter for the memtable file
@@ -131,6 +176,17 @@ bool Controller::addRow(std::string colFamId, std::vector<std::string> colIds, s
 				}
 				fn = "data/s" + std::to_string(dataPartNumber) + "-SSTable.data";
 				writeSSTables(fn, ssts1);
+
+				// update caches
+				ccm.vToCcs["s" + std::to_string(dataPartNumber)] = Cache{};
+				auto mit = ccm.vToCcs.begin();
+				while (mit != ccm.vToCcs.end()) {
+					if (mit->first.at(0) == 'm') {
+						ccm.vToCcs.erase(mit++);
+					}
+					else
+						mit++;
+				}
 				
 				// manage bloom filters in the memory
 				addSSTablesBF(ssts1, dataPartNumber++);
@@ -154,6 +210,8 @@ bool Controller::dumpMt() {
 	mt.data = locToVal();
 	mt.curSize = 0;
 	mt.version++;
+
+	ccm.vToCcs["m" + std::to_string(mt.version)] = Cache{};
 	return true;
 }
 

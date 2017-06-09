@@ -23,11 +23,13 @@ public:
 	Query& select(std::vector<std::string> colIds);
 	Query& from(std::string cfId);
 	SSTable& where(std::string colId, std::string val);
-	SSTable& join(const SSTable& sst1, const SSTable& sst2);
-	SSTable& on(std::string cond);
+	//SSTable& join(const SSTable& sst1, const SSTable& sst2);
+	//SSTable& on(std::string cond);
 
 	Query& insert(std::vector<std::string> colIds, std::vector<std::string> vals);
 	SSTable& into(std::string cfId);
+
+	Query& deleteEntry(std::string cfId, std::string colId, unsigned int rowId);
 
 	Query& createTable(std::string cfId);
 };

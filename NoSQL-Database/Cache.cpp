@@ -6,7 +6,6 @@ bool Cache::updateEntry(std::string colFamId, std::string colId, unsigned int ro
 		q.pop();
 	}
 	
-
 	std::string mKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
 	// add value
 	if (data.find(mKey) == data.end()) {
@@ -30,6 +29,16 @@ bool Cache::exist(std::string colFamId, std::string colId, unsigned int rowId) {
 	return true;
 }
 
+bool Cache::deleteEntry(std::string colFamId, std::string colId, unsigned int rowId) {
+	std::string mKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
+	if (data.find(mKey) == data.end())
+		return false;
+
+	data[mKey] = TOMBSTONE;
+	return true;
+}
+
+
 std::string Cache::readEntry(std::string colFamId, std::string colId, unsigned int rowId) {
 	std::string mKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
 
@@ -38,3 +47,29 @@ std::string Cache::readEntry(std::string colFamId, std::string colId, unsigned i
 
 	else return data[mKey];
 }
+
+bool CacheManager::exist(std::string colFamId, std::string colId, unsigned int rowId, std::string v) {
+	if (vToCcs.find(v) == vToCcs.end())
+		return false;
+
+	return vToCcs[v].exist(colFamId, colId, rowId);
+}
+
+bool CacheManager::exist(std::string colFamId, std::string colId, unsigned int rowId) {
+	for (auto mit = vToCcs.begin(); mit != vToCcs.end(); mit++) {
+		if (mit->second.exist(colFamId, colId, rowId))
+			return true;
+	}
+	return false;
+}
+
+std::string CacheManager::readEntry(std::string colFamId, std::string colId, unsigned int rowId, std::string v) {
+	std::string mKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
+
+	assert(vToCcs.find(v) != vToCcs.end());
+	if (vToCcs[v].exist(colFamId, colId, rowId))
+		return vToCcs[v].readEntry(colFamId, colId, rowId);
+
+	return "";
+}
+

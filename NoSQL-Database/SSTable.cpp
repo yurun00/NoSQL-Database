@@ -98,7 +98,7 @@ std::vector<SSTable> SSTable::mergeSSTableVecs(std::vector<SSTable>& ssts1, std:
 	return ssts;
 }
 
-
+// remove tombstone entries
 SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2) {
 	if (sst1.title != sst2.title) {
 		std::cout << "Different tables cannot be merged." << std::endl;
@@ -128,6 +128,15 @@ SSTable& SSTable::mergeSSTables(const SSTable& sst1, const SSTable& sst2) {
 			cnt++;
 			mit1++;
 			mit2++;
+		}
+		// remove tombstone entries
+		auto mit = data.back().begin();
+		while (mit != data.back().end())
+		{
+			if (mit->second == TOMBSTONE)
+				data.back().erase(mit++);
+			else
+				mit++;
 		}
 	}
 	return *this;
