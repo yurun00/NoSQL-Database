@@ -1,0 +1,8 @@
+Page size: 32
+MemTable size: 500
+Max MemTable version: 3
+Max SSTable Size: 2000
+Number of write: 	500,500,500,500,
+Time of write: 	622,1819,4324,2814,
+Time of read: 	9636,33132,61439,97503,
+hit cache times: 	1446,2901,4356,5811,

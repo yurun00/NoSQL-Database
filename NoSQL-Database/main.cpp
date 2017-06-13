@@ -1,67 +1,60 @@
 #include "Common.h"
 #include "SSTable.h"
-#include "Controller.h"
 #include "BloomFilter.h"
 #include "Query.h"
 
 using namespace std;
 
 int main() {
-	srand(time(NULL));
-	std::vector<std::string> names{ "Binny", "Bird", "Birdie", "Birgit", "Birgitta",
-		"Blair", "Blaire", "Blake", "Blakelee", "Blakeley",
-		"Blanca", "Blanch", "Blancha", "Blanche", "Blinni",
-		"Blinnie", "Blinny", "Bliss", "Blisse", "Blithe",
-		"Binny", "Bird", "Birdie", "Birgit", "Birgitta",
-		"Blair", "Blaire", "Blake", "Blakelee", "Blakeley",
-		"Blanca", "Blanch", "Blancha", "Blanche", "Blinni",
-		"Blinnie", "Blinny", "Bliss", "Blisse", "Blithe" };
+	map<string, unsigned int> index;
+	index["name"] = 0;
+	index["age"] = 1;
+	index["gender"] = 2;
 
-	std::vector<std::string> ids(40);
-	for (int i = 0; i < 40; i++) {
-		ids[i] = std::to_string(10000 + rand() % 90000);
-	}
+	vector<map<unsigned int, string>> data;
+	map<unsigned int, string> mp;
+	mp[0] = "James";
+	mp[1] = "Kobe";
+	mp[2] = "Durant";
+	data.push_back(mp);
+	mp[0] = "11";
+	mp[1] = "22";
+	mp[2] = "33";
+	data.push_back(mp);
+	mp[0] = "male";
+	mp[1] = "male";
+	mp[2] = "female";
+	data.push_back(mp);
+	SSTable sst1(string("myTable"), index, data);
+	sst1.print();
 
-	std::vector<std::string> ages(40);
-	for (int i = 0; i < 40; i++) {
-		ages[i] = std::to_string(10 + rand() % 5);
-	}
+	index = map<string, unsigned int>{};
+	index["grade"] = 0;
+	index["pid"] = 1;
+	data = vector<map<unsigned int, string>>{};
+	mp = map<unsigned int, string>{};
+	mp[0] = "95";
+	mp[1] = "93";
+	mp[2] = "100";
+	data.push_back(mp);
+	mp[0] = "123123132";
+	mp[1] = "454564564";
+	mp[2] = "789789789";
+	data.push_back(mp);
+	SSTable sst2(string("studentTable"), index, data);
+	sst2.printAsTable();
 
-	Query qr;
-	qr.createTable("student");
-	for (int i = 0; i < 40; i++) {
-		qr.insert(std::vector<std::string>{"name", "id", "age"},
-			std::vector<std::string>{names[i], ids[i], ages[i]}).into("student");
-	}
+	cout << "-------------****************-------------" << endl;
 
-	qr.select({ "name" }).from("student").getResult().print();
-	qr.deleteEntry("student", "age", 4);
-	qr.deleteEntry("student", "age", 6);
-	qr.deleteEntry("student", "age", 8);
-	qr.deleteEntry("student", "age", 10);
-	qr.deleteEntry("student", "age", 5);
-	qr.deleteEntry("student", "age", 7);
-	qr.deleteEntry("student", "age", 9);
-	qr.deleteEntry("student", "age", 11);
-	qr.deleteEntry("student", "age", 12);
-	qr.deleteEntry("student", "age", 13);
-	qr.deleteEntry("student", "age", 14);
-	qr.deleteEntry("student", "age", 15);
-	qr.deleteEntry("student", "age", 16);
-	qr.updateEntry("student", "age", 10, "0");
-	qr.updateEntry("student", "age", 11, "0");
-	qr.updateEntry("student", "age", 12, "0");
-	qr.updateEntry("student", "age", 13, "0");
-	qr.updateEntry("student", "age", 14, "0");
-	qr.updateEntry("student", "age", 15, "0");
-	qr.updateEntry("student", "age", 16, "0");
-	qr.updateEntry("student", "age", 17, "0");
-	qr.updateEntry("student", "age", 18, "0");
-	qr.updateEntry("student", "age", 19, "0");
-	qr.updateEntry("student", "age", 20, "0");
-	qr.select({ "name", "age" }).from("student").getResult().printAsTable();
+	string fn = "data/sstTest.data";
+	std::vector<SSTable> ssts1{ sst1, sst2 };
+	writeSSTablesD(fn, ssts1);
+	cout << "end" << endl;
+	std::vector<SSTable> ssts2{};
+	readSSTablesD(fn, ssts2);
 
-	cout << "Overall false poisitive error rate of bloom filters: " << float(bfFp) / bfNg << endl;
-	cout << bfNg << endl;
+	cout << ssts2.size() << endl;
+	if (ssts2.size() >= 1)
+		ssts2[0].printAsTable();
 	return 0;
 }

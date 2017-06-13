@@ -1,0 +1,107 @@
+#include "Common.h"
+#include "SSTable.h"
+#include "Controller.h"
+#include "BloomFilter.h"
+#include "Query.h"
+
+using namespace std;
+
+std::string alphabet[] =
+{ "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+"abcdefghijklmnopqrstuvwxyz" };
+
+std::string genName()  // Random string generator function.
+{
+	int len = rand() % 7 + 3;
+	std::string res;
+	for (int i = 0; i < len; i++)
+		res += alphabet[1][rand() % 26];
+	return alphabet[0][rand() % 26] + res;
+}
+
+int main() {
+	srand(time(NULL));
+	const int m = 4;
+	int numOp[m] = { 500, 500, 500, 500};
+	int wt[m] = { 0 };
+	int rt[m] = { 0 };
+	int rc[m] = { 0 };
+	Query qr;
+	qr.createTable("student");
+	for (int j = 0; j < m; j++) {
+		int n = numOp[j];
+		hitCache = 0;
+
+		std::vector<std::string> names(n);
+		for (int i = 0; i < n; i++) {
+			names[i] = genName();
+		}
+
+		std::vector<std::string> ids(n);
+		for (int i = 0; i < n; i++) {
+			ids[i] = std::to_string(10000 + rand() % 90000);
+		}
+
+		std::vector<std::string> ages(n);
+		for (int i = 0; i < n; i++) {
+			ages[i] = std::to_string(10 + rand() % 5);
+		}
+
+		auto beginTime = chrono::steady_clock::now();
+		for (int i = 0; i < n; i++) {
+			qr.insert(std::vector<std::string>{"name", "id", "age"},
+				std::vector<std::string>{names[i], ids[i], ages[i]}).into("student");
+		}
+
+		auto writeTime = chrono::steady_clock::now();
+
+		qr.select({ "name", "age", "id" }).from("student").getResult();
+		//qr.deleteEntry("student", "age", 4);
+		//qr.updateEntry("student", "age", 10, "0");
+		//qr.select({ "name", "age" }).from("student").getResult().printAsTable();
+
+		auto readTime = chrono::steady_clock::now();
+
+		wt[j] = chrono::duration_cast<chrono::milliseconds>(writeTime - beginTime).count();
+		rt[j] = chrono::duration_cast<chrono::milliseconds>(readTime - writeTime).count();
+		rc[j] = hitCache;
+		cout << "Write time: " << wt[j] << "\n";
+		cout << "Read time : " << rt[j] << endl;
+	}
+
+	cout << "Overall false poisitive error rate of bloom filters: " << float(bfFp) / bfNg << endl;
+	cout << bfNg << endl;
+
+	ofstream os;
+	string fn = string("results/performancePageSize_") + to_string(PAGE_SIZE )+ ".txt";
+	os.open(fn, std::ios::out);
+
+	os << "Page size: " << to_string(PAGE_SIZE) << endl;
+	os << "MemTable size: " << to_string(MAX_MEMTABLE_SIZE) << endl;
+	os << "Max MemTable version: " << to_string(MAX_MEMTABLE_VERSION) << endl;
+	os << "Max SSTable Size: " << to_string(MAX_SSTABLE_SIZE) << endl;
+
+	os << "Number of write: \t";
+	for (int j = 0; j < m; j++)
+		os << numOp[j] << ",";
+	os << endl;
+
+	os << "Time of write: \t";
+	for (int j = 0; j < m; j++)
+		os << wt[j] << ",";
+	os << endl;
+
+	os << "Time of read: \t";
+	for (int j = 0; j < m; j++)
+		os << rt[j] << ",";
+	os << endl;
+
+	os << "hit cache times: \t";
+	for (int j = 0; j < m; j++)
+		os << rc[j] << ",";
+	os << endl;
+
+	os.close();
+
+	return 0;
+}

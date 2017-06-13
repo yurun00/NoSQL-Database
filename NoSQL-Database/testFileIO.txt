@@ -1,9 +1,7 @@
-#include <iostream>
-#include <string>
-#include <sstream>
 #include "Common.h"
 #include "SSTable.h"
-#include "IOController.h"
+#include "BloomFilter.h"
+#include "Query.h"
 
 using namespace std;
 
@@ -48,12 +46,11 @@ int main() {
 
 	cout << "-------------****************-------------" << endl;
 
-	IOController ioc;
 	string fn = "data/sstTest.data";
 	std::vector<SSTable> ssts1{ sst1, sst2 };
-	ioc.writeSSTables(fn, ssts1);
+	writeSSTables(fn, ssts1);
 	std::vector<SSTable> ssts2{};
-	ioc.readSSTables(fn, ssts2);
+	readSSTables(fn, ssts2);
 
 	cout << ssts2.size() << endl;
 	if (ssts2.size() >= 1)

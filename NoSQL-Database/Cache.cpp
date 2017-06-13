@@ -1,14 +1,14 @@
 #include "Cache.h"
 
 bool Cache::updateEntry(std::string colFamId, std::string colId, unsigned int rowId, std::string val) {
-	if (data.size() >= maxSize) {
-		data.erase(q.front());
-		q.pop();
-	}
-	
 	std::string mKey = colFamId + "-" + colId + "-" + std::to_string(rowId);
+
 	// add value
 	if (data.find(mKey) == data.end()) {
+		if (data.size() >= maxSize) {
+			data.erase(q.front());
+			q.pop();
+		}
 		data[mKey] = val;
 		q.push(data.find(mKey));
 	}

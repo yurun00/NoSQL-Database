@@ -6,6 +6,9 @@
 #include "BloomFilter.h"
 #include "Cache.h"
 
+extern int hitMemTable;
+extern int hitCache;
+
 class Controller{
 	friend class Query;
 	MetaSSTableManager msm;

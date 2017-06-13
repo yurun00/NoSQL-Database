@@ -141,12 +141,16 @@
     <ClInclude Include="Types.h" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="performanceCacheSize.txt" />
+    <Text Include="performanceMemTableSize.txt" />
+    <Text Include="performancePageSize.txt" />
     <Text Include="testBloomFilter.txt" />
     <Text Include="testDelete.txt" />
     <Text Include="testFileIO.txt" />
     <Text Include="testInsertSelect.txt" />
     <Text Include="testInsertSelectWithDiskCompaction.txt" />
     <Text Include="testSSTableMerge.txt" />
+    <Text Include="testUpdate.txt" />
     <Text Include="testWhere.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

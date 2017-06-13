@@ -1,5 +1,8 @@
 #include "Controller.h"
 
+int hitMemTable = 0;
+int hitCache = 0;
+
 bool Controller::readCol(const std::string colFamId, const std::string colId, SSTable& sst) {
 	unsigned int rowNum = msm.getRowNum(colFamId);
 	for (unsigned int i = 0; i < rowNum; i++) {
@@ -12,6 +15,7 @@ bool Controller::readColRow(const std::string colFamId, const std::string colId,
 	std::string val;
 	// if the location is in memtable
 	if (mt.exist(colFamId, colId, rowId)) {
+
 		val = mt.read(colFamId, colId, rowId);
 		if (val == TOMBSTONE)
 			return false;
@@ -27,6 +31,8 @@ bool Controller::readColRow(const std::string colFamId, const std::string colId,
 				.possiblyContains((const uint8_t*)bfKey.c_str(), bfKey.size())) {
 				// if the value is in cache of the file
 				if (ccm.exist(colFamId, colId, rowId, mKey)) {
+					//std::cout << hitCache++ << std::endl;
+					hitCache++;
 					val = ccm.readEntry(colFamId, colId, rowId, mKey);
 					if (val == TOMBSTONE)
 						return false;
@@ -47,6 +53,8 @@ bool Controller::readColRow(const std::string colFamId, const std::string colId,
 				.possiblyContains((const uint8_t*)bfKey.c_str(), bfKey.size())) {
 				// if the value is in cache of the file
 				if (ccm.exist(colFamId, colId, rowId, mKey)) {
+					//std::cout << hitCache++ << std::endl;
+					hitCache++;
 					val = ccm.readEntry(colFamId, colId, rowId, mKey);
 					if (val == TOMBSTONE)
 						return false;
@@ -81,10 +89,14 @@ bool Controller::readColRowFrom(const std::string colFamId, const std::string co
 			sst.addEntry(colId, rowId, val);
 			// add the page where the value is in to the cache of the file
 			std::string mKey = fn.substr(fn.find("/")+1, fn.find("-")-fn.find("/")-1);
-			unsigned int start = (rowId / PAGE_SIZE) * PAGE_SIZE;
-			unsigned int end = std::min((rowId / PAGE_SIZE + 1) * PAGE_SIZE - 1, svit->data[svit->index[colId]].size() - 1);
-			for (unsigned int i = start; i <= end; i++) {
-				ccm.vToCcs[mKey].updateEntry(colFamId, colId, i, svit->data[svit->index[colId]][i]);
+			auto offset = std::distance(svit->data[svit->index[colId]].begin(), svit->data[svit->index[colId]].find(rowId));
+			auto it = svit->data[svit->index[colId]].begin();
+			std::advance(it, (offset / PAGE_SIZE) * PAGE_SIZE);	
+			unsigned int cnt = 0;
+			while(cnt < PAGE_SIZE && it != svit->data[svit->index[colId]].end()) {
+				ccm.vToCcs[mKey].updateEntry(colFamId, colId, it->first, it->second);
+				cnt++;
+				it++;
 			}
 			return true;
 		}
@@ -278,11 +290,12 @@ bool Controller::flushMt() {
 
 	writeSSTables(fn, ssts);
 
+	ccm.vToCcs["m" + std::to_string(mt.version)] = Cache{};
+
 	mt.data = locToVal();
 	mt.curSize = 0;
 	mt.version++;
 
-	ccm.vToCcs["m" + std::to_string(mt.version)] = Cache{};
 	return true;
 }
 

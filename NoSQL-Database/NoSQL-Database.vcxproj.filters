@@ -109,5 +109,17 @@
     <Text Include="testDelete.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="testUpdate.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="performanceCacheSize.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="performanceMemTableSize.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="performancePageSize.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>
